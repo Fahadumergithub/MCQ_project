@@ -4,6 +4,7 @@ import json
 import PyPDF2
 import pandas as pd
 import io
+from docx import Document
 
 # Gemini API key
 api_key = "AIzaSyDRJt8UxRk4Xy5iYYplkeB8E8DhnyECmHY"
@@ -45,9 +46,9 @@ def call_gemini_api(prompt):
 def extract_text_from_pdf(pdf_file):
     pdf_reader = PyPDF2.PdfReader(pdf_file)
     text = ""
-    for page in pdf_reader.pages:
-        text += page.extract_text()
-    return text
+    for page_num, page in enumerate(pdf_reader.pages):
+        text += f"Page {page_num + 1}:\n{page.extract_text()}\n\n"
+    return text, pdf_reader
 
 # Streamlit app
 st.title("Restorative Dentistry MCQ Generating Agent")
@@ -65,17 +66,19 @@ if st.button("Generate MCQ"):
     if uploaded_file is not None:
         try:
             # Extract text from PDF
-            pdf_text = extract_text_from_pdf(uploaded_file)
+            pdf_text, pdf_reader = extract_text_from_pdf(uploaded_file)
             st.write("PDF Uploaded Successfully!")
             
             # Construct prompt for Gemini
             prompt = f'''
-            Generate MCQs for Restorative Dentistry based on the following text:
+            Generate exactly 5 MCQs for Restorative Dentistry based on the following text:
             {pdf_text}
 
             Custom Prompt: {custom_prompt}
             Level of Cognition: {cognition_level}
             Difficulty Level: {difficulty_level}
+
+            Ensure each question has 5 options (A, B, C, D, E) and a clear correct answer.
             '''
             
             # Call Gemini API
@@ -83,36 +86,57 @@ if st.button("Generate MCQ"):
             st.write("Generated MCQs:")
             st.write(response)
             
-            # Parse MCQ data (example parsing logic)
-            mcqs = response.split("\\n")
-            mcqs = [q for q in mcqs if q.strip() and q.startswith(("Q", "1.", "2.", "3."))]  # Extract questions
+            # Parse MCQ data
+            mcqs = response.split("\n")
+            mcqs = [q.strip() for q in mcqs if q.strip() and q.startswith(("Q", "1.", "2.", "3.", "4.", "5."))]  # Extract questions
+            options = ["A) Option 1 | B) Option 2 | C) Option 3 | D) Option 4 | E) Option 5"] * 5  # Hardcoded 5 options per question
+            answers = ["A"] * 5  # Hardcoded correct answers (placeholder)
+            
+            # Create a DataFrame for the MCQs with additional attributes
             mcq_data = pd.DataFrame({
-                "Question": mcqs,
-                "Options": ["A) Option 1 | B) Option 2 | C) Option 3 | D) Option 4"] * len(mcqs),
-                "Answer": ["A"] * len(mcqs)  # Placeholder for correct answer
+                "Question": mcqs[:5],  # Ensure only 5 questions
+                "Options": options[:5],  # Ensure only 5 options per question
+                "Answer": answers[:5],  # Ensure only 5 answers
+                "Cognitive Level": [cognition_level] * 5,  # Add cognitive level
+                "Difficulty Level": [difficulty_level] * 5,  # Add difficulty level
+                "Page Number": ["Page 1"] * 5,  # Add page number (placeholder, can be updated)
+                "PDF Document Name": [uploaded_file.name] * 5  # Add PDF document name
             })
             
             # Display MCQ table
             st.write("MCQ Table:")
             st.table(mcq_data)
             
-            # Download buttons
-            st.write("Download MCQs:")
+            # Download as CSV
             csv = mcq_data.to_csv(index=False).encode("utf-8")
-            st.download_button("Download as CSV", csv, "mcqs.csv", "text/csv")
+            st.download_button(
+                label="Download as CSV",
+                data=csv,
+                file_name="mcqs.csv",
+                mime="text/csv"
+            )
             
-            # Export to Word
-            from docx import Document
+            # Download as Word
             doc = Document()
+            doc.add_heading("Generated MCQs", level=1)
             for index, row in mcq_data.iterrows():
                 doc.add_paragraph(f"Question: {row['Question']}")
                 doc.add_paragraph(f"Options: {row['Options']}")
                 doc.add_paragraph(f"Answer: {row['Answer']}")
-                doc.add_paragraph("\\n")
+                doc.add_paragraph(f"Cognitive Level: {row['Cognitive Level']}")
+                doc.add_paragraph(f"Difficulty Level: {row['Difficulty Level']}")
+                doc.add_paragraph(f"Page Number: {row['Page Number']}")
+                doc.add_paragraph(f"PDF Document Name: {row['PDF Document Name']}")
+                doc.add_paragraph("\n")
             doc_bytes = io.BytesIO()
             doc.save(doc_bytes)
             doc_bytes.seek(0)
-            st.download_button("Download as Word", doc_bytes, "mcqs.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            st.download_button(
+                label="Download as Word",
+                data=doc_bytes,
+                file_name="mcqs.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
             
         except Exception as e:
             st.error(f"Error: {e}")
