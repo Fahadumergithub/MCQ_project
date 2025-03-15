@@ -89,8 +89,17 @@ if st.button("Generate MCQ"):
             # Parse MCQ data
             mcqs = response.split("\n")
             mcqs = [q.strip() for q in mcqs if q.strip() and q.startswith(("Q", "1.", "2.", "3.", "4.", "5."))]  # Extract questions
-            options = ["A) Option 1 | B) Option 2 | C) Option 3 | D) Option 4 | E) Option 5"] * 5  # Hardcoded 5 options per question
-            answers = ["A"] * 5  # Hardcoded correct answers (placeholder)
+            
+            # Hardcoded options for demonstration
+            options = [
+                "A) Composite resin | B) Amalgam | C) Glass ionomer | D) Zirconia | E) Porcelain",
+                "A) Isolation | B) Anesthesia | C) Polishing | D) Etching | E) Bonding",
+                "A) Caries | B) Fracture | C) Wear | D) Sensitivity | E) Discoloration",
+                "A) Fluoride | B) Sugar | C) Acid | D) Bacteria | E) Trauma",
+                "A) Micro-retentions | B) Whitening | C) Desensitization | D) Bonding | E) Polishing"
+            ]
+            
+            answers = ["A", "B", "C", "D", "E"]  # Hardcoded correct answers (placeholder)
             
             # Create a DataFrame for the MCQs with additional attributes
             mcq_data = pd.DataFrame({
@@ -142,3 +151,23 @@ if st.button("Generate MCQ"):
             st.error(f"Error: {e}")
     else:
         st.error("Please upload a PDF file.")
+
+# Add "Powered by Medentec" with hyperlink
+st.markdown(
+    """
+    <div style="text-align: center; margin-top: 20px;">
+        <p>Powered by <a href="https://medentec.com/" target="_blank">Medentec</a></p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# Add "Code by Dr. Fahad Umer" with LinkedIn hyperlink
+st.markdown(
+    """
+    <div style="text-align: center; margin-top: 10px;">
+        <p>Code by <a href="https://www.linkedin.com/public-profile/settings?trk=d_flagship3_profile_self_view_public_profile" target="_blank">Dr. Fahad Umer</a></p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
