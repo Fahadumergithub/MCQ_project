@@ -155,7 +155,7 @@ if st.button("Generate MCQ"):
 
 # Add "New MCQ" button to refresh the page
 if st.button("New MCQ"):
-    st.experimental_rerun()
+    st.rerun()  # Use st.rerun() if available, otherwise use the session state workaround
 
 # Add "Powered by Medentec" with hyperlink
 st.markdown(
