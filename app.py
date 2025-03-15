@@ -6,8 +6,8 @@ import pandas as pd
 import io
 from docx import Document
 
-# Gemini API key
-api_key = "AIzaSyDRJt8UxRk4Xy5iYYplkeB8E8DhnyECmHY"
+# Read API key from secrets.toml
+api_key = st.secrets["GEMINI_API_KEY"]
 
 # Function to call Gemini API
 def call_gemini_api(prompt):
