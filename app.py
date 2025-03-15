@@ -79,6 +79,7 @@ if st.button("Generate MCQ"):
             Difficulty Level: {difficulty_level}
 
             Ensure each question has 5 options (A, B, C, D, E) and a clear correct answer.
+            Ensure all MCQ stems are based on dental clinical scenarios.
             '''
             
             # Call Gemini API
@@ -151,6 +152,10 @@ if st.button("Generate MCQ"):
             st.error(f"Error: {e}")
     else:
         st.error("Please upload a PDF file.")
+
+# Add "New MCQ" button to refresh the page
+if st.button("New MCQ"):
+    st.experimental_rerun()
 
 # Add "Powered by Medentec" with hyperlink
 st.markdown(
