@@ -13,7 +13,7 @@ from docx import Document
 AZURE_OPENAI_KEY = st.secrets.get("AZURE_OPENAI_API_KEY")
 AZURE_OPENAI_ENDPOINT = st.secrets.get("AZURE_OPENAI_ENDPOINT", "https://mcqgpt.openai.azure.com/")
 AZURE_OPENAI_DEPLOYMENT = st.secrets.get("AZURE_OPENAI_DEPLOYMENT", "o4-mini")
-AZURE_OPENAI_API_VERSION = st.secrets.get("AZURE_OPENAI_API_VERSION", "2024-05-01-preview")
+AZURE_OPENAI_API_VERSION = st.secrets.get("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
 
 # Warn if API key missing.
 if not AZURE_OPENAI_KEY:
