@@ -1,73 +1,54 @@
 import os
 import requests
 import pandas as pd
-from io import StringIO
-from flask import Flask, render_template, request
+import streamlit as st
 
-app = Flask(__name__)
-
-# Azure OpenAI config
+# Azure OpenAI settings
 AZURE_OPENAI_ENDPOINT = "https://mcqgpt.openai.azure.com"
-AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")  # set in your environment
-DEPLOYMENT_NAME = "o4-mini"
+DEPLOYMENT_NAME = "o4-mini"  # update if your deployment name is different
 API_VERSION = "2024-12-01-preview"
+API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 
-def generate_mcqs(prompt: str):
-    """
-    Calls Azure OpenAI to generate MCQs in CSV format
-    """
-    url = f"{AZURE_OPENAI_ENDPOINT}/openai/deployments/{DEPLOYMENT_NAME}/chat/completions?api-version={API_VERSION}"
+# Streamlit app
+st.title("Dental MCQ Generator")
 
+uploaded_file = st.file_uploader("Upload PDF", type="pdf")
+
+if uploaded_file is not None:
+    st.success("PDF Uploaded Successfully!")
+
+    # Example user prompt (you can expand this)
+    prompt = f"""
+    Generate 5 MCQs from the content of the uploaded PDF.
+    Return the result as a markdown table with these columns:
+    Question | Options | Answer | Cognitive Level | Difficulty Level | Page Number | PDF Document Name
+    """
+
+    # Call Azure OpenAI
     headers = {
         "Content-Type": "application/json",
-        "api-key": AZURE_OPENAI_KEY
+        "api-key": API_KEY,
     }
 
     body = {
         "messages": [
-            {"role": "system", "content": "You are an assistant that generates multiple-choice questions (MCQs) for dental education."},
-            {"role": "user", "content": f"""
-Generate 5 MCQs from the following text. 
-Return the output ONLY as a CSV table with these exact columns:
-Question | Options | Answer | Cognitive Level | Difficulty Level | Page Number | PDF Document Name
-
-Text: {prompt}
-"""}
+            {"role": "system", "content": "You are an assistant that generates MCQs for dental education."},
+            {"role": "user", "content": prompt}
         ],
         "temperature": 1.0,
-        "max_completion_tokens": 800  # safe buffer
+        "max_completion_tokens": 500
     }
 
-    response = requests.post(url, headers=headers, json=body)
-    response.raise_for_status()
-    response_json = response.json()
+    response = requests.post(
+        f"{AZURE_OPENAI_ENDPOINT}/openai/deployments/{DEPLOYMENT_NAME}/chat/completions?api-version={API_VERSION}",
+        headers=headers,
+        json=body
+    )
 
-    # Get model reply
-    raw_output = response_json["choices"][0]["message"]["content"]
-    print("RAW RESPONSE:\n", raw_output)  # 🔍 Debugging step
-
-    # Try parsing as CSV
-    try:
-        # Remove markdown fences if present
-        cleaned_output = raw_output.strip().replace("```csv", "").replace("```", "")
-        df = pd.read_csv(StringIO(cleaned_output), sep="|")
-        df = df.applymap(lambda x: str(x).strip())  # clean spaces
-        return df
-    except Exception as e:
-        print("Parsing error:", e)
-        return pd.DataFrame(columns=[
-            "Question", "Options", "Answer",
-            "Cognitive Level", "Difficulty Level",
-            "Page Number", "PDF Document Name"
-        ])
-
-@app.route("/", methods=["GET", "POST"])
-def index():
-    mcq_table = None
-    if request.method == "POST":
-        text = request.form["text"]
-        mcq_table = generate_mcqs(text)
-    return render_template("index.html", tables=[mcq_table.to_html(classes='data')] if mcq_table is not None else [])
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    if response.status_code == 200:
+        result = response.json()
+        mcq_output = result["choices"][0]["message"]["content"].strip()
+        st.markdown("### MCQ Table:")
+        st.markdown(mcq_output)
+    else:
+        st.error(f"Error: {response.text}")
