@@ -40,7 +40,8 @@ def call_azure_openai(prompt: str):
         # keep temperature similar to previous (Gemini used 1)
         "temperature": 1.0,
         "top_p": 0.95,
-        "max_tokens": 8192
+        max_completion_tokens=500
+
     }
 
     resp = requests.post(endpoint, headers=headers, json=body, timeout=120)
