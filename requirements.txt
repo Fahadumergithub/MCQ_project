@@ -1,5 +1,6 @@
 streamlit
-PyPDF2
 requests
+PyPDF2
+pandas
 python-docx
-openai
+open ai
