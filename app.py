@@ -15,7 +15,7 @@ api_key = st.secrets["AZURE_OPENAI_API_KEY"]
 
 AZURE_ENDPOINT = "https://mcqchatbot.openai.azure.com"
 AZURE_DEPLOYMENT_NAME = "gpt-4.1"
-AZURE_API_VERSION = "2025-04-14"
+AZURE_API_VERSION = "024-12-01-preview"
 
 
 # =========================
