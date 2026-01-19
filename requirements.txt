@@ -3,4 +3,3 @@ requests
 PyPDF2
 pandas
 python-docx
-open ai
