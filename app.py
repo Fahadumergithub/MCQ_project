@@ -121,8 +121,8 @@ def parse_mcqs(response_text: str):
 # Streamlit UI
 # =========================
 
-st.title("🦷 Prosthodontic MCQ Generator")
-st.caption("Clinical scenario-based MCQs for postgraduate assessment")
+st.title("🦷 MCQ Generator")
+st.caption("Clinical scenario-based MCQ")
 
 with st.sidebar:
     st.header("Configuration")
@@ -178,7 +178,7 @@ if st.button("Generate MCQs", type="primary"):
     cog_code = cognition_level.split(" ")[0]
 
     prompt = f"""
-You are a senior PROSTHODONTIST preparing MCQs for postgraduate residents.
+You are a senior Exam paper setter for dentistry preparing MCQs for entry test.
 
 Generate exactly {num_questions} MCQs from the content below.
 
