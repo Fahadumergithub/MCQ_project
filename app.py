@@ -194,6 +194,7 @@ Rules:
 - Only one option is correct.
 - Write clearly and professionally.
 - Avoid artificial or mechanical phrasing.
+- Always display the correct answer (A-E) at the end of each MCQ
 
 {custom_prompt}
 
@@ -208,8 +209,8 @@ B) Option
 C) Option
 D) Option
 E) Option
+ Correct option (A-E)
 
-Correct Answer: A
 """
 
     with st.spinner("Generating MCQs…"):
