@@ -3,9 +3,6 @@ import requests
 import json
 import PyPDF2
 import pandas as pd
-import io
-import re
-from docx import Document
 
 # =========================
 # Azure OpenAI configuration
@@ -36,9 +33,10 @@ def call_azure_openai_api(prompt: str) -> str | None:
 
     body = {
         "messages": [
+            {"role": "system", "content": "You are a precise JSON generator. Always return valid JSON only."},
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.7,
+        "temperature": 0.4,
         "max_tokens": 8192
     }
 
@@ -60,61 +58,44 @@ def call_azure_openai_api(prompt: str) -> str | None:
 def extract_text_from_pdf(pdf_file):
     reader = PyPDF2.PdfReader(pdf_file)
     full_text = ""
-    page_texts = []
 
     for i, page in enumerate(reader.pages):
         text = page.extract_text()
         full_text += f"[PAGE {i + 1}]\n{text}\n\n"
-        page_texts.append((i + 1, text))
 
-    return full_text, reader, page_texts
+    return full_text
 
 
 # =========================
-# MCQ parser
+# JSON Parser (Robust)
 # =========================
 
-def parse_mcqs(response_text: str):
-    mcqs = []
-    blocks = re.split(r'(?=\d+\.\s)', response_text)
+def parse_json_mcqs(response_text):
+    try:
+        # Remove markdown if model adds it
+        if "```" in response_text:
+            response_text = response_text.split("```")[1]
 
-    for block in blocks:
-        if not block.strip():
-            continue
+        data = json.loads(response_text)
 
-        q_match = re.search(r'(\d+)\.\s+(.*?)(?=\nA\)|\Z)', block, re.DOTALL)
-        if not q_match:
-            continue
+        validated = []
 
-        number = q_match.group(1)
-        question = q_match.group(2).strip()
+        for i, item in enumerate(data):
+            if (
+                "question" in item and
+                "options" in item and
+                "answer" in item and
+                len(item["options"]) == 5
+            ):
+                validated.append(item)
 
-        options = {}
-        for letter in ["A", "B", "C", "D", "E"]:
-            m = re.search(
-                rf'{letter}\)\s+(.*?)(?=\n[A-E]\)|\nCorrect|\Z)',
-                block,
-                re.DOTALL
-            )
-            if m:
-                options[letter] = m.group(1).strip()
+        return validated
 
-        ans_match = re.search(r'Correct Answer:\s*([A-E])', block)
-        answer = ans_match.group(1) if ans_match else None
-
-        page_match = re.search(r'Page\s+(\d+)', block, re.IGNORECASE)
-        page = page_match.group(1) if page_match else "N/A"
-
-        if len(options) == 5 and answer:
-            mcqs.append({
-                "number": number,
-                "question": question,
-                "options": options,
-                "answer": answer,
-                "page": page
-            })
-
-    return mcqs
+    except Exception as e:
+        st.error("JSON parsing failed")
+        st.code(str(e))
+        st.text(response_text)
+        return None
 
 
 # =========================
@@ -146,18 +127,12 @@ with st.sidebar:
         index=1
     )
 
-    num_questions = st.slider(
-        "Number of MCQs",
-        1,
-        10,
-        5
-    )
+    num_questions = st.slider("Number of MCQs", 1, 10, 5)
 
 uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
 
 custom_prompt = st.text_area(
     "Additional Instructions (optional)",
-    placeholder="Focus on fixed prosthodontics, implant planning, material selection…",
     height=90
 )
 
@@ -173,50 +148,42 @@ if st.button("Generate MCQs", type="primary"):
         st.stop()
 
     with st.spinner("Extracting PDF content…"):
-        pdf_text, reader, _ = extract_text_from_pdf(uploaded_file)
-
-    cog_code = cognition_level.split(" ")[0]
+        pdf_text = extract_text_from_pdf(uploaded_file)
 
     prompt = f"""
-You are a senior Exam paper setter for dentistry preparing MCQs for entry test.
-
-Generate exactly {num_questions} MCQs from the content below.
+Generate exactly {num_questions} dentistry MCQs from the content below.
 
 PDF CONTENT:
 {pdf_text}
 
-Target Bloom’s level: {cognition_level}
-Difficulty: {difficulty_level}
+Requirements:
+- Clinical scenario based
+- Bloom’s level: {cognition_level}
+- Difficulty: {difficulty_level}
+- Exactly five options (A–E)
+- Only one correct answer
 
-Rules:
-- Start each question with a realistic clinical scenario.
-- Provide exactly five options (A–E).
-- Only one option is correct.
-- Write clearly and professionally.
-- Avoid artificial or mechanical phrasing.
-- Always display the correct answer (A-E) at the end of each MCQ
 IMPORTANT:
-- Distribute correct answers evenly across A, B, C, D, and E
-- Do NOT repeat the same correct option consecutively
-- Randomize the position of the correct answer for each MCQ
-- Ensure all options are of similar length and plausibility
-- Avoid making option A consistently the most detailed or correct
+- Distribute correct answers across A–E (avoid repeating same answer)
+- Keep all options similar in length and plausibility
+
+Return ONLY valid JSON in this format:
+
+[
+  {{
+    "question": "Clinical scenario...",
+    "options": {{
+      "A": "...",
+      "B": "...",
+      "C": "...",
+      "D": "...",
+      "E": "..."
+    }},
+    "answer": "C"
+  }}
+]
 
 {custom_prompt}
-
-FORMAT STRICTLY AS:
-
-1. Clinical scenario...
-
-Question text?
-
-A) Option
-B) Option
-C) Option
-D) Option
-E) Option
- Correct option (A-E)
-
 """
 
     with st.spinner("Generating MCQs…"):
@@ -225,24 +192,31 @@ E) Option
     if not response:
         st.stop()
 
-    st.success("MCQs generated")
-
-    with st.expander("Raw model output"):
-        st.text(response)
-
-    mcqs = parse_mcqs(response)
+    mcqs = parse_json_mcqs(response)
 
     if not mcqs:
-        st.error("Parsing failed. Check output format.")
+        st.error("Parsing failed. Model did not return valid JSON.")
         st.stop()
 
-    for mcq in mcqs:
-        st.markdown(f"### Question {mcq['number']}")
+    st.success("MCQs generated")
+
+    # =========================
+    # Display MCQs
+    # =========================
+
+    for i, mcq in enumerate(mcqs, 1):
+        st.markdown(f"### Question {i}")
         st.write(mcq["question"])
-        for k, v in mcq["options"].items():
-            st.write(f"{k}) {v}")
+
+        for key, value in mcq["options"].items():
+            st.write(f"{key}) {value}")
+
         st.markdown(f"**Correct Answer:** {mcq['answer']}")
         st.markdown("---")
+
+    # =========================
+    # DataFrame + Download
+    # =========================
 
     df = pd.DataFrame([
         {
@@ -260,12 +234,14 @@ E) Option
     st.dataframe(df, use_container_width=True)
 
     csv = df.to_csv(index=False).encode("utf-8")
+
     st.download_button(
         "Download CSV",
         csv,
         "mcqs.csv",
         "text/csv"
     )
+
 
 # =========================
 # Footer
