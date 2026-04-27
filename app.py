@@ -195,6 +195,12 @@ Rules:
 - Write clearly and professionally.
 - Avoid artificial or mechanical phrasing.
 - Always display the correct answer (A-E) at the end of each MCQ
+IMPORTANT:
+- Distribute correct answers evenly across A, B, C, D, and E
+- Do NOT repeat the same correct option consecutively
+- Randomize the position of the correct answer for each MCQ
+- Ensure all options are of similar length and plausibility
+- Avoid making option A consistently the most detailed or correct
 
 {custom_prompt}
 
